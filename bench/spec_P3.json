@@ -1,0 +1,6 @@
+{ "name":"P3 labeled + ASC", "rows":12, "alts":2, "labeled":true, "method":"efficient", "starts":20,"iter":80,"seed":103,
+  "alternatives":[{"name":"Car"},{"name":"Train","asc":true}],
+  "attributes":[
+    {"name":"Cost","coding":"dummy","levels":["lo","mid","hi"]},
+    {"name":"Quality","coding":"dummy","levels":["lo","mid","hi"]}],
+  "priors":{"ASC · Train":0.5,"Cost[mid]":-0.3,"Cost[hi]":-0.7,"Quality[mid]":0.4,"Quality[hi]":0.9} }

@@ -1,0 +1,1338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ChoiceForge — Efficient Choice Experiment Designer</title>
+<style>
+  :root{
+    --bg:#0f1419; --panel:#161c24; --panel2:#1c242e; --line:#2a333f;
+    --ink:#e8eef5; --muted:#92a0b0; --faint:#6a7686;
+    --accent:#3dd6b0; --accent2:#5b8cff; --warn:#ffb454; --bad:#ff6b6b; --good:#46d39a;
+    --chip:#222c38; --shadow:0 8px 30px rgba(0,0,0,.35);
+    --radius:12px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.45}
+  a{color:var(--accent2)}
+  header{position:sticky;top:0;z-index:20;background:linear-gradient(180deg,rgba(15,20,25,.98),rgba(15,20,25,.92));
+    backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .logo{font-weight:700;font-size:17px;letter-spacing:.2px;display:flex;align-items:center;gap:9px}
+  .logo .mark{width:24px;height:24px;border-radius:7px;background:linear-gradient(135deg,var(--accent),var(--accent2));display:inline-block}
+  .tag{color:var(--muted);font-size:12.5px}
+  header .spacer{flex:1}
+  .btn{appearance:none;border:1px solid var(--line);background:var(--panel2);color:var(--ink);
+    padding:8px 14px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:.12s}
+  .btn:hover{border-color:var(--accent);color:#fff}
+  .btn.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));border:none;color:#06121a}
+  .btn.primary:hover{filter:brightness(1.07)}
+  .btn.ghost{background:transparent}
+  .btn.sm{padding:4px 9px;font-size:12px;border-radius:7px}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.danger:hover{border-color:var(--bad);color:var(--bad)}
+
+  .wrap{display:grid;grid-template-columns:minmax(380px,440px) 1fr;gap:0;align-items:start}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}}
+  .config{padding:18px;border-right:1px solid var(--line);min-height:calc(100vh - 56px)}
+  .results{padding:18px;min-width:0}
+
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);margin-bottom:14px;overflow:hidden}
+  .card > h3{margin:0;padding:11px 14px;font-size:12.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);
+    border-bottom:1px solid var(--line);background:var(--panel2);display:flex;align-items:center;gap:8px}
+  .card > h3 .num{color:var(--accent);font-weight:700}
+  .card .body{padding:13px 14px}
+  .card .body.tight{padding:10px 12px}
+
+  label.field{display:block;margin-bottom:11px}
+  label.field > span{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600}
+  input[type=text],input[type=number],select,textarea{width:100%;background:var(--bg);border:1px solid var(--line);
+    color:var(--ink);border-radius:8px;padding:7px 9px;font-size:13px;font-family:var(--sans)}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent)}
+  textarea{resize:vertical;font-family:var(--mono);font-size:12.5px}
+  .row{display:flex;gap:10px}
+  .row > *{flex:1;min-width:0}
+  .inline{display:flex;align-items:center;gap:8px}
+  .help{font-size:11.5px;color:var(--faint);margin-top:3px}
+
+  .switch{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none;font-size:12.5px;color:var(--ink)}
+  .switch input{appearance:none;width:34px;height:19px;background:var(--line);border-radius:20px;position:relative;cursor:pointer;transition:.15s;flex:none}
+  .switch input:checked{background:var(--accent)}
+  .switch input::after{content:"";position:absolute;width:15px;height:15px;border-radius:50%;background:#fff;top:2px;left:2px;transition:.15s}
+  .switch input:checked::after{left:17px}
+
+  .seg{display:inline-flex;background:var(--bg);border:1px solid var(--line);border-radius:9px;padding:2px;gap:2px}
+  .seg button{appearance:none;border:none;background:transparent;color:var(--muted);padding:6px 12px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#06121a}
+
+  .attr{border:1px solid var(--line);border-radius:10px;margin-bottom:10px;background:var(--panel2)}
+  .attr .hd{display:flex;align-items:center;gap:8px;padding:9px 10px;border-bottom:1px solid var(--line)}
+  .attr .hd .grip{color:var(--faint);cursor:grab}
+  .attr .hd input.nm{flex:1;font-weight:600}
+  .attr .bd{padding:10px}
+  .attr .bd .row{margin-bottom:9px}
+  .pill{font-size:11px;color:var(--muted);background:var(--chip);border:1px solid var(--line);border-radius:20px;padding:2px 9px}
+
+  table{border-collapse:collapse;width:100%;font-size:12.5px}
+  th,td{border:1px solid var(--line);padding:5px 8px;text-align:center}
+  th{background:var(--panel2);color:var(--muted);font-weight:600;font-size:11.5px}
+  td.lbl{text-align:left;color:var(--muted)}
+  .tbl-scroll{overflow:auto;border:1px solid var(--line);border-radius:10px;max-height:60vh}
+  .tbl-scroll table{border:none}
+  .tbl-scroll th{position:sticky;top:0;z-index:2}
+  .alt-a{background:rgba(61,214,176,.06)} .alt-b{background:rgba(91,140,255,.06)}
+  .alt-c{background:rgba(255,180,84,.06)} .alt-d{background:rgba(255,107,107,.06)}
+
+  .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-bottom:14px}
+  .metric{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:11px 13px}
+  .metric .k{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .metric .v{font-size:21px;font-weight:700;margin-top:3px;font-family:var(--mono)}
+  .metric .s{font-size:11px;color:var(--faint);margin-top:2px}
+  .metric.hl .v{color:var(--accent)}
+
+  .tabs{display:flex;gap:4px;margin-bottom:12px;flex-wrap:wrap}
+  .tabs button{appearance:none;border:1px solid var(--line);background:var(--panel);color:var(--muted);
+    padding:7px 13px;border-radius:8px;font-size:12.5px;font-weight:600;cursor:pointer}
+  .tabs button.on{background:var(--panel2);color:var(--ink);border-color:var(--accent)}
+  .pane{display:none} .pane.on{display:block}
+
+  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    color:var(--muted);text-align:center;padding:60px 20px;border:1px dashed var(--line);border-radius:14px}
+  .empty .big{font-size:40px}
+
+  .progress{height:8px;background:var(--bg);border:1px solid var(--line);border-radius:20px;overflow:hidden}
+  .progress > div{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent2));width:0;transition:width .1s}
+
+  .note{font-size:12px;color:var(--muted);background:rgba(91,140,255,.06);border:1px solid rgba(91,140,255,.25);
+    border-radius:9px;padding:9px 11px;margin-top:4px}
+  .note.warn{background:rgba(255,180,84,.07);border-color:rgba(255,180,84,.3)}
+  .note.bad{background:rgba(255,107,107,.07);border-color:rgba(255,107,107,.3);color:#ffc4c4}
+
+  .tt{position:relative;cursor:help;border-bottom:1px dotted var(--faint)}
+  .small{font-size:11.5px;color:var(--faint)}
+  code{font-family:var(--mono);background:var(--bg);padding:1px 5px;border-radius:5px;font-size:12px;border:1px solid var(--line)}
+  .mono{font-family:var(--mono)}
+  .add-link{color:var(--accent);font-weight:600;cursor:pointer;font-size:12.5px}
+  .add-link:hover{text-decoration:underline}
+  .t-good{color:var(--good)} .t-warn{color:var(--warn)} .t-bad{color:var(--bad)}
+  .corr-hot{color:var(--bad);font-weight:700}
+  ::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:var(--line);border-radius:10px}
+  details summary{cursor:pointer;color:var(--muted);font-size:12.5px;font-weight:600;padding:4px 0}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="mark"></span>ChoiceForge</div>
+  <span class="tag">D-efficient &amp; Bayesian designs for discrete choice experiments</span>
+  <div class="spacer"></div>
+  <button class="btn ghost sm" id="btnExample">Load example</button>
+  <button class="btn ghost sm" id="btnReset">Reset</button>
+  <button class="btn primary" id="btnGenerate">⚡ Generate design</button>
+</header>
+
+<div class="wrap">
+  <!-- ============ CONFIG ============ -->
+  <div class="config">
+
+    <div class="card">
+      <h3><span class="num">1</span> Experiment</h3>
+      <div class="body">
+        <div class="row">
+          <label class="field"><span>Choice situations</span>
+            <input type="number" id="cfgRows" min="2" max="200" step="1"></label>
+          <label class="field"><span>Alternatives / task</span>
+            <input type="number" id="cfgAlts" min="2" max="6" step="1"></label>
+        </div>
+        <div class="row">
+          <label class="field"><span>Random starts</span>
+            <input type="number" id="cfgStarts" min="1" max="200" step="1"></label>
+          <label class="field"><span>Max passes / start</span>
+            <input type="number" id="cfgIter" min="1" max="200" step="1"></label>
+        </div>
+        <label class="switch" style="margin-bottom:8px"><input type="checkbox" id="cfgLabeled"><span>Labeled experiment (alternatives are named brands/options)</span></label>
+        <div class="help" style="margin-bottom:10px">Labeled designs let you add alternative-specific constants (ASCs) and alternative-specific coefficients.</div>
+        <label class="switch" style="margin-bottom:8px"><input type="checkbox" id="cfgNoChoice"><span>Add a no-choice / opt-out alternative ("None")</span></label>
+        <div class="help" style="margin-bottom:10px">Adds a constant opt-out to every task; set its <i>No-choice constant</i> prior below. Cross-checked against idefix.</div>
+        <label class="field" style="margin-bottom:0"><span>Blocks (split tasks across respondent versions)</span>
+          <input type="number" id="cfgBlocks" min="1" max="20" step="1"></label>
+        <div class="help">1 = every respondent sees all tasks. &gt;1 partitions the tasks into balanced versions so each respondent answers fewer.</div>
+      </div>
+    </div>
+
+    <div class="card" id="altCard" style="display:none">
+      <h3><span class="num">2</span> Alternatives</h3>
+      <div class="body tight" id="altList"></div>
+    </div>
+
+    <div class="card">
+      <h3><span class="num" id="numAttr">2</span> Attributes &amp; levels</h3>
+      <div class="body">
+        <div id="attrList"></div>
+        <span class="add-link" id="btnAddAttr">+ Add attribute</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="num">4</span> Model &amp; priors</h3>
+      <div class="body">
+        <label class="field"><span>Design objective</span>
+          <div class="seg" id="segMethod">
+            <button data-m="efficient" class="on">D-efficient (fixed priors)</button>
+            <button data-m="bayesian">Bayesian efficient</button>
+          </div>
+        </label>
+        <div class="help" id="methodHelp" style="margin:-4px 0 10px">Minimises the D-error of the MNL Fisher-information matrix evaluated at your prior values.</div>
+        <div class="row" id="bayesRow" style="display:none">
+          <label class="field"><span>Bayesian draws (R)</span>
+            <input type="number" id="cfgDraws" min="10" max="500" step="10" value="80"></label>
+          <label class="field"><span>Draw seed</span>
+            <input type="number" id="cfgSeed" min="1" step="1" value="12345"></label>
+        </div>
+        <div class="note" id="priorIntro">Enter a prior estimate for each parameter. Use <code>0</code> if unknown (yields an orthogonal-style design). For Bayesian, give a standard deviation to express uncertainty.</div>
+        <div class="inline" style="margin-top:10px;gap:10px;flex-wrap:wrap">
+          <button class="btn sm" id="btnSuggestPriors">✨ Suggest priors</button>
+          <span class="small">Fills sensible signs &amp; magnitudes from each attribute's preferred direction.</span>
+        </div>
+        <div id="priorTable" style="margin-top:10px"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="num">5</span> Constraints</h3>
+      <div class="body">
+        <label class="switch" style="margin-bottom:10px"><input type="checkbox" id="cfgBalance"><span>Enforce attribute level balance</span></label>
+        <label class="switch" style="margin-bottom:10px"><input type="checkbox" id="cfgNoDom"><span>Remove dominated alternatives (uses prior signs)</span></label>
+        <div style="margin-top:6px">
+          <div class="small" style="margin-bottom:6px;color:var(--muted);font-weight:600">Prohibited level combinations (within one alternative)</div>
+          <div id="prohibList"></div>
+          <span class="add-link" id="btnAddProhib">+ Add prohibited pair</span>
+        </div>
+        <div class="note warn" id="balanceNote" style="display:none;margin-top:10px">Level balance switches the optimiser to a swap algorithm so each level appears equally often. Combining it with many prohibitions may limit how balanced the result can be.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ============ RESULTS ============ -->
+  <div class="results">
+    <div id="runStatus" style="display:none;margin-bottom:14px">
+      <div class="inline" style="justify-content:space-between;margin-bottom:7px">
+        <span id="runLabel" style="font-weight:600">Optimising…</span>
+        <button class="btn danger sm" id="btnStop">Stop</button>
+      </div>
+      <div class="progress"><div id="progBar"></div></div>
+    </div>
+
+    <div id="emptyState" class="empty">
+      <div class="big">🧪</div>
+      <div><b>No design yet.</b><br>Set up attributes, levels and priors on the left, then hit <b>Generate design</b>.</div>
+      <button class="btn primary" id="btnGenerate2">⚡ Generate design</button>
+      <div class="small" style="max-width:460px">ChoiceForge builds efficient stated-choice designs the way Ngene does: it searches over level
+        assignments to minimise the D-error of the multinomial-logit information matrix.</div>
+    </div>
+
+    <div id="resultArea" style="display:none">
+      <div class="metrics" id="metrics"></div>
+      <div class="tabs" id="tabs">
+        <button data-p="design" class="on">Design</button>
+        <button data-p="assess">Assessment</button>
+        <button data-p="stats">Parameter stats</button>
+        <button data-p="diag">Diagnostics</button>
+        <button data-p="export">Export</button>
+      </div>
+      <div class="pane on" id="pane-design"></div>
+      <div class="pane" id="pane-assess"></div>
+      <div class="pane" id="pane-stats"></div>
+      <div class="pane" id="pane-diag"></div>
+      <div class="pane" id="pane-export"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ============================================================================
+   ChoiceForge — efficient discrete-choice experimental designs
+   Math: MNL Fisher information  Ω = Σ_s Σ_j p_js (x_js - x̄_s)(x_js - x̄_s)'
+         D-error = det(Ω)^(-1/K)   (AVC = Ω⁻¹, evaluated at N=1 respondent)
+         Bayesian (Db) error = mean over prior draws of the local D-error.
+   Optimiser: coordinate exchange (free) or swap algorithm (level-balanced).
+============================================================================ */
+
+/* ---------- tiny linear algebra (flat row-major Float64Array, n×n) -------- */
+function det(M,n){
+  const a=M.slice(); let d=1;
+  for(let i=0;i<n;i++){
+    let p=i,mx=Math.abs(a[i*n+i]);
+    for(let r=i+1;r<n;r++){const v=Math.abs(a[r*n+i]); if(v>mx){mx=v;p=r;}}
+    if(mx<1e-13) return 0;
+    if(p!==i){for(let c=0;c<n;c++){const t=a[i*n+c];a[i*n+c]=a[p*n+c];a[p*n+c]=t;} d=-d;}
+    const pv=a[i*n+i]; d*=pv;
+    for(let r=i+1;r<n;r++){const f=a[r*n+i]/pv; if(f!==0) for(let c=i;c<n;c++) a[r*n+c]-=f*a[i*n+c];}
+  }
+  return d;
+}
+function inverse(M,n){
+  const a=M.slice(), inv=new Float64Array(n*n);
+  for(let i=0;i<n;i++) inv[i*n+i]=1;
+  for(let i=0;i<n;i++){
+    let p=i,mx=Math.abs(a[i*n+i]);
+    for(let r=i+1;r<n;r++){const v=Math.abs(a[r*n+i]); if(v>mx){mx=v;p=r;}}
+    if(mx<1e-13) return null;
+    if(p!==i) for(let c=0;c<n;c++){let t=a[i*n+c];a[i*n+c]=a[p*n+c];a[p*n+c]=t; t=inv[i*n+c];inv[i*n+c]=inv[p*n+c];inv[p*n+c]=t;}
+    const pv=a[i*n+i];
+    for(let c=0;c<n;c++){a[i*n+c]/=pv; inv[i*n+c]/=pv;}
+    for(let r=0;r<n;r++){ if(r===i) continue; const f=a[r*n+i]; if(f!==0) for(let c=0;c<n;c++){a[r*n+c]-=f*a[i*n+c]; inv[r*n+c]-=f*inv[i*n+c];}}
+  }
+  return inv;
+}
+
+/* ---------- seeded RNG + normal draws (reproducible designs) -------------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function makeNormal(rng){let spare=null;return function(){if(spare!==null){const s=spare;spare=null;return s;}let u,v,s;do{u=2*rng()-1;v=2*rng()-1;s=u*u+v*v;}while(s>=1||s===0);const m=Math.sqrt(-2*Math.log(s)/s);spare=v*m;return u*m;};}
+
+/* ---------- application state -------------------------------------------- */
+let UID=1; const uid=()=>UID++;
+let S={};                // current model + settings + priors + results
+let RUN={cancel:false, busy:false};
+
+function blankAttr(name,type){
+  return {id:uid(), name:name||"Attribute", type:type||"categorical", coding:"dummy",
+          levelsText: type==="continuous" ? "10, 20, 30" : "Low, Medium, High",
+          altSpecific:false, direction:0,
+          appliesTo:null,   // null = applies to every alternative; else array of alt ids (labeled designs)
+          altLevels:{}};    // optional per-alternative level overrides (alt-specific attributes)
+}
+function defaultState(){
+  return {
+    rows:12, alts:2, labeled:false, starts:10, iter:50, method:"efficient", draws:80, seed:12345,
+    balance:false, noDom:false, noChoice:false, blocks:1,
+    alternatives:[{id:uid(),name:"Option A",asc:false},{id:uid(),name:"Option B",asc:false}],
+    attributes:[blankAttr("Attribute 1"),blankAttr("Attribute 2")],
+    priors:{}, prohib:[], result:null
+  };
+}
+function exampleState(){
+  const a1=blankAttr("Price ($)","continuous"); a1.levelsText="10, 15, 20, 25"; a1.direction=-1;
+  const a2=blankAttr("Comfort"); a2.levelsText="Basic, Standard, Premium"; a2.direction=1; a2.coding="dummy";
+  const a3=blankAttr("Travel time (min)","continuous"); a3.levelsText="20, 30, 40"; a3.direction=-1;
+  const st={
+    rows:12, alts:2, labeled:false, starts:14, iter:60, method:"efficient", draws:80, seed:12345,
+    balance:false, noDom:false, noChoice:false, blocks:1,
+    alternatives:[{id:uid(),name:"Option A",asc:false},{id:uid(),name:"Option B",asc:false}],
+    attributes:[a1,a2,a3], priors:{}, prohib:[], result:null
+  };
+  S=st; rebuildParams();
+  setPrior(paramKeyContinuous(a1.id,null), -0.12, 0.04);
+  setPrior(paramKeyCat(a2.id,null,1), 0.4, 0.2);
+  setPrior(paramKeyCat(a2.id,null,2), 0.8, 0.3);
+  setPrior(paramKeyContinuous(a3.id,null), -0.05, 0.02);
+  return st;
+}
+
+/* ---------- parameter model --------------------------------------------- */
+const paramKeyASC=(altId)=>`ASC@${altId}`;
+const paramKeyContinuous=(attrId,altId)=>`A${attrId}${altId?'@'+altId:''}`;
+const paramKeyCat=(attrId,altId,li)=>`A${attrId}:L${li}${altId?'@'+altId:''}`;
+
+function parseLevelsText(text,type){
+  const parts=String(text||"").split(",").map(s=>s.trim()).filter(s=>s.length);
+  if(type==="continuous") return parts.map(p=>({value:parseFloat(p), label:p})).filter(o=>isFinite(o.value));
+  return parts.map(p=>({value:p, label:p}));
+}
+function parseLevels(attr){ return parseLevelsText(attr.levelsText,attr.type); }
+function attrAppliesToAlt(attr,altId){
+  if(!S.labeled) return true;
+  if(!attr.appliesTo) return true;          // null = all alternatives
+  return attr.appliesTo.includes(altId);
+}
+function levelsForAttrAlt(attr,altId){       // per-alt level set (alt-specific attributes may override)
+  if(S.labeled && attr.altSpecific && attr.altLevels && attr.altLevels[altId]!=null && String(attr.altLevels[altId]).trim().length)
+    return parseLevelsText(attr.altLevels[altId],attr.type);
+  return parseLevels(attr);
+}
+function altName(id){const a=S.alternatives.find(x=>x.id===id);return a?a.name:"?";}
+
+/* Build ordered parameter descriptors from the current model. */
+function buildParams(){
+  const params=[]; const visAlts=S.alternatives.slice(0,S.alts);
+  // ASCs (first alternative = reference, no ASC)
+  visAlts.forEach((alt,idx)=>{
+    if(S.labeled && idx>0 && alt.asc)
+      params.push({key:paramKeyASC(alt.id),label:`ASC · ${alt.name}`,kind:"asc",altId:alt.id});
+  });
+  S.attributes.forEach((attr,ai)=>{
+    const applicable=visAlts.filter(a=>attrAppliesToAlt(attr,a.id)).map(a=>a.id);
+    if(applicable.length===0) return;
+    if(S.labeled && attr.altSpecific){
+      // one coefficient set per applicable alternative, using that alt's own level set
+      applicable.forEach(altId=>{
+        const lv=levelsForAttrAlt(attr,altId), suff=` · ${altName(altId)}`;
+        if(attr.type==="continuous"){
+          params.push({key:paramKeyContinuous(attr.id,altId),label:attr.name+suff,kind:"cont",
+                       attrId:attr.id,attrPos:ai,altId,values:lv.map(l=>l.value)});
+        }else{
+          for(let li=1; li<lv.length; li++)
+            params.push({key:paramKeyCat(attr.id,altId,li),label:`${attr.name}[${lv[li].label}]`+suff,
+                         kind:"cat",attrId:attr.id,attrPos:ai,altId,levelIdx:li,coding:attr.coding});
+        }
+      });
+    }else{
+      // generic coefficient shared across the alternatives that have this attribute
+      const lv=parseLevels(attr);
+      const subset = (S.labeled && applicable.length<visAlts.length) ? applicable : null;
+      const suff = subset ? ` · ${subset.map(altName).join("/")}` : "";
+      if(attr.type==="continuous"){
+        params.push({key:paramKeyContinuous(attr.id,null),label:attr.name+suff,kind:"cont",
+                     attrId:attr.id,attrPos:ai,altId:null,appliesToAlts:subset,values:lv.map(l=>l.value)});
+      }else{
+        for(let li=1; li<lv.length; li++)
+          params.push({key:paramKeyCat(attr.id,null,li),label:`${attr.name}[${lv[li].label}]`+suff,
+                       kind:"cat",attrId:attr.id,attrPos:ai,altId:null,appliesToAlts:subset,levelIdx:li,coding:attr.coding});
+      }
+    }
+  });
+  if(S.noChoice) params.push({key:"NC",label:"No-choice constant",kind:"ncasc"});
+  return params;
+}
+function rebuildParams(){
+  S._params=buildParams();
+  S._levels=S.attributes.map(parseLevels);
+  // prune orphan priors, keep existing values
+  const keep={};
+  S._params.forEach(p=>{ keep[p.key]= S.priors[p.key]||{mean:0,sd:0}; });
+  S.priors=keep;
+}
+function setPrior(key,mean,sd){ if(!S.priors[key])S.priors[key]={mean:0,sd:0}; S.priors[key].mean=mean; if(sd!=null)S.priors[key].sd=sd; }
+
+/* Heuristic priors: sign from the attribute's preferred direction, magnitude scaled so the
+   utility spread across an attribute's range is ≈ TARGET logit units (keeps choices informative,
+   not deterministic). These are starting values — replace with pilot/literature estimates. */
+function suggestPriors(){
+  rebuildParams();
+  const TARGET=1.0;
+  S._params.forEach(p=>{
+    const pr=S.priors[p.key]; if(!pr) return;
+    if(p.kind==="asc"){ pr.mean=0; pr.sd=0.3; return; }
+    const attr=S.attributes.find(a=>a.id===p.attrId), d=attr?attr.direction:0;
+    if(d===0){ pr.mean=0; pr.sd=0.3; return; }
+    if(p.kind==="cont"){
+      const vals=(p.values&&p.values.length)?p.values:parseLevels(attr).map(l=>l.value);
+      const rng=(Math.max(...vals)-Math.min(...vals))||1;
+      pr.mean=+(d*TARGET/rng).toFixed(4);
+    }else{
+      const lv=p.altId?levelsForAttrAlt(attr,p.altId):parseLevels(attr);
+      const L=Math.max(2,lv.length);
+      pr.mean=+(d*TARGET*(p.levelIdx/(L-1))).toFixed(3);  // monotone across level order
+    }
+    pr.sd=pr.mean!==0 ? +(Math.abs(pr.mean)*0.5).toFixed(3) : 0.3;
+  });
+  renderPriors();
+}
+
+/* ---------- encode one alternative row into the design vector x (length K) */
+function encodeAlt(params,K,levelIdxByAttrPos,thisAltId){
+  const x=new Float64Array(K);
+  for(let k=0;k<K;k++){
+    const p=params[k];
+    if(p.kind==="asc"){ x[k]= p.altId===thisAltId?1:0; continue; }
+    if(p.kind==="ncasc"){ x[k]=0; continue; }   // designed alternatives are not the opt-out
+    if(p.altId!=null && p.altId!==thisAltId){ x[k]=0; continue; }
+    if(p.appliesToAlts && !p.appliesToAlts.includes(thisAltId)){ x[k]=0; continue; }
+    const sel=levelIdxByAttrPos[p.attrPos];
+    if(p.kind==="cont"){ x[k]= p.values[sel]||0; }
+    else if(p.coding==="effects"){ x[k]= sel===0 ? -1 : (sel===p.levelIdx?1:0); }
+    else { x[k]= sel===p.levelIdx?1:0; }
+  }
+  return x;
+}
+
+/* ---------- MNL per-situation information contribution -------------------- */
+function situationContrib(Xrows,beta,K,out){          // out: zeroed Float64Array(K*K)
+  const J=Xrows.length, v=new Float64Array(J); let mx=-Infinity;
+  for(let j=0;j<J;j++){let s=0;const x=Xrows[j];for(let k=0;k<K;k++)s+=x[k]*beta[k];v[j]=s;if(s>mx)mx=s;}
+  let den=0; for(let j=0;j<J;j++){v[j]=Math.exp(v[j]-mx);den+=v[j];}
+  const p=new Float64Array(J); for(let j=0;j<J;j++)p[j]=v[j]/den;
+  const xbar=new Float64Array(K);
+  for(let j=0;j<J;j++){const x=Xrows[j],pj=p[j];for(let k=0;k<K;k++)xbar[k]+=pj*x[k];}
+  const d=new Float64Array(K);
+  for(let j=0;j<J;j++){const x=Xrows[j],pj=p[j];
+    for(let k=0;k<K;k++)d[k]=x[k]-xbar[k];
+    for(let aa=0;aa<K;aa++){const da=pj*d[aa]; if(da!==0){const base=aa*K;for(let bb=0;bb<K;bb++)out[base+bb]+=da*d[bb];}}
+  }
+  return p;
+}
+function derrFromOmegas(omegas,K){
+  let sum=0; const R=omegas.length;
+  for(let r=0;r<R;r++){const dv=det(omegas[r],K); if(dv<=0) return Infinity; sum+=Math.pow(dv,-1/K);}
+  return sum/R;
+}
+
+/* ---------- optimisation context ---------------------------------------- */
+function buildBetaDraws(params){
+  const K=params.length;
+  if(S.method!=="bayesian"){
+    const b=new Float64Array(K); params.forEach((p,k)=>b[k]=(S.priors[p.key]||{}).mean||0); return [b];
+  }
+  const R=Math.max(2,S.draws|0), rng=mulberry32((S.seed|0)||1), nrm=makeNormal(rng), draws=[];
+  for(let r=0;r<R;r++){
+    const b=new Float64Array(K);
+    params.forEach((p,k)=>{const pr=S.priors[p.key]||{mean:0,sd:0}; b[k]=pr.mean+(pr.sd>0?pr.sd*nrm():0);});
+    draws.push(b);
+  }
+  return draws;
+}
+
+function makeCtx(){
+  rebuildParams();
+  const params=S._params, K=params.length, J=S.alts, Sn=S.rows, A=S.attributes.length;
+  const betas=buildBetaDraws(params), R=betas.length;
+  const altIds=S.alternatives.slice(0,J).map(a=>a.id);
+  const priorMeans=new Float64Array(K); params.forEach((p,k)=>priorMeans[k]=(S.priors[p.key]||{}).mean||0);
+  // per (alternative, attribute): the level set, the number of choosable levels, and whether it applies
+  const cellLevels=[], cellCount=[], cellApplies=[];
+  for(let j=0;j<J;j++){
+    cellLevels.push([]); cellCount.push(new Int32Array(A)); cellApplies.push([]);
+    for(let ai=0;ai<A;ai++){
+      const attr=S.attributes[ai], applies=attrAppliesToAlt(attr,altIds[j]);
+      cellApplies[j].push(applies);
+      if(!applies){ cellLevels[j].push([]); cellCount[j][ai]=1; continue; }
+      const lv=(S.labeled && attr.altSpecific)?levelsForAttrAlt(attr,altIds[j]):parseLevels(attr);
+      cellLevels[j].push(lv); cellCount[j][ai]=Math.max(1,lv.length);
+    }
+  }
+  const hasNC = !!S.noChoice;
+  let ncVec=null;
+  if(hasNC){ ncVec=new Float64Array(K); const ix=params.findIndex(p=>p.kind==="ncasc"); if(ix>=0) ncVec[ix]=1; }
+  const ctx={params,K,J,Sn,A,betas,R,altIds,cellLevels,cellCount,cellApplies,priorMeans,
+             hasNC,ncVec,rows:[],X:[],contrib:[],omega:[]};
+  for(let r=0;r<R;r++){ctx.contrib.push([]);ctx.omega.push(new Float64Array(K*K));}
+  for(let s=0;s<Sn;s++){
+    ctx.rows.push(Array.from({length:J},()=>new Int32Array(A)));
+    ctx.X.push(new Array(J));
+    for(let r=0;r<R;r++) ctx.contrib[r].push(new Float64Array(K*K));
+  }
+  return ctx;
+}
+function rebuildSituation(ctx,s){
+  const {params,K,J,betas,R,altIds}=ctx;
+  for(let j=0;j<J;j++) ctx.X[s][j]=encodeAlt(params,K,ctx.rows[s][j],altIds[j]);
+  const infoRows = ctx.hasNC ? ctx.X[s].concat([ctx.ncVec]) : ctx.X[s];   // opt-out joins the choice set
+  for(let r=0;r<R;r++){
+    const tmp=new Float64Array(K*K); situationContrib(infoRows,betas[r],K,tmp);
+    const old=ctx.contrib[r][s], om=ctx.omega[r];
+    for(let i=0;i<K*K;i++){om[i]+=tmp[i]-old[i];}
+    ctx.contrib[r][s]=tmp;
+  }
+}
+function derr(ctx){ return derrFromOmegas(ctx.omega,ctx.K); }
+
+/* ---------- constraints -------------------------------------------------- */
+function prohibViolated(ctx,s,j){
+  const row=ctx.rows[s][j];
+  for(const pr of S.prohib){
+    const pa=S.attributes.findIndex(a=>a.id===pr.attrA), pb=S.attributes.findIndex(a=>a.id===pr.attrB);
+    if(pa<0||pb<0) continue;
+    if(row[pa]===pr.levelA && row[pb]===pr.levelB) return true;
+  }
+  return false;
+}
+function partialUtil(ctx,s,j){ // per-attribute partial utility from prior means (for dominance)
+  const u=new Float64Array(ctx.A);
+  ctx.params.forEach((p,k)=>{
+    if(p.kind==="asc") return;
+    if(p.altId!=null && p.altId!==ctx.altIds[j]) return;
+    const x=ctx.X[s][j][k]; u[p.attrPos]+=x*ctx.priorMeans[k];
+  });
+  return u;
+}
+function taskDominance(ctx,s){   // true if some alternative weakly dominates another on shared attributes
+  const J=ctx.J, U=[];
+  for(let j=0;j<J;j++) U.push(partialUtil(ctx,s,j));
+  for(let a=0;a<J;a++)for(let b=0;b<J;b++){ if(a===b) continue;
+    let ge=true,gt=false,shared=0;
+    for(let t=0;t<ctx.A;t++){
+      if(!(ctx.cellApplies[a][t]&&ctx.cellApplies[b][t])) continue; shared++;
+      if(U[a][t]<U[b][t]-1e-9){ge=false;break;}
+      if(U[a][t]>U[b][t]+1e-9)gt=true;
+    }
+    if(shared>0&&ge&&gt) return true;
+  }
+  return false;
+}
+function dominanceViolated(ctx,s){ return S.noDom && taskDominance(ctx,s); }
+function sitViol(ctx,s){ // any active constraint violated in this situation
+  for(let j=0;j<ctx.J;j++) if(prohibViolated(ctx,s,j)) return true;
+  if(S.noDom && taskDominance(ctx,s)) return true;
+  return false;
+}
+function situationFeasible(ctx,s){
+  for(let j=0;j<ctx.J;j++) if(prohibViolated(ctx,s,j)) return false;
+  if(S.noDom){ /* needs X built */ rebuildSituation(ctx,s); if(dominanceViolated(ctx,s)) return false; }
+  return true;
+}
+
+/* ---------- initialisers ------------------------------------------------- */
+function randInitSituation(ctx,s,rng){
+  for(let tries=0;tries<60;tries++){
+    for(let j=0;j<ctx.J;j++)for(let a=0;a<ctx.A;a++){const L=ctx.cellCount[j][a]; ctx.rows[s][j][a]= L>1?Math.floor(rng()*L):0;}
+    if(!S.noDom){ // only prohib matters; cheap
+      let ok=true; for(let j=0;j<ctx.J;j++) if(prohibViolated(ctx,s,j)){ok=false;break;}
+      if(ok){rebuildSituation(ctx,s);return;}
+    } else {
+      rebuildSituation(ctx,s);
+      let ok=true; for(let j=0;j<ctx.J;j++) if(prohibViolated(ctx,s,j)){ok=false;break;}
+      if(ok && !dominanceViolated(ctx,s)){return;}
+    }
+  }
+  rebuildSituation(ctx,s); // give up; accept last
+}
+function randomInit(ctx,rng){ for(let s=0;s<ctx.Sn;s++) randInitSituation(ctx,s,rng); }
+
+/* balance pools: list of {attrPos, cells:[{s,j}], L} */
+function buildPools(ctx){
+  const pools=[];
+  S.attributes.forEach((attr,ai)=>{
+    if(S.labeled && attr.altSpecific){
+      for(let j=0;j<ctx.J;j++){ const L=ctx.cellCount[j][ai]; if(L<2) continue;
+        const cells=[]; for(let s=0;s<ctx.Sn;s++)cells.push({s,j}); pools.push({attrPos:ai,cells,L}); }
+    }else{
+      const applJ=[]; for(let j=0;j<ctx.J;j++) if(ctx.cellCount[j][ai]>1) applJ.push(j);
+      if(applJ.length===0) return; const L=ctx.cellCount[applJ[0]][ai];
+      const cells=[]; for(let s=0;s<ctx.Sn;s++)for(const j of applJ)cells.push({s,j});
+      pools.push({attrPos:ai,cells,L});
+    }
+  });
+  return pools;
+}
+function balancedInit(ctx,rng){
+  const pools=buildPools(ctx);
+  pools.forEach(pool=>{
+    const n=pool.cells.length, seq=[];
+    for(let i=0;i<n;i++) seq.push(i%pool.L);
+    for(let i=n-1;i>0;i--){const k=Math.floor(rng()*(i+1));const t=seq[i];seq[i]=seq[k];seq[k]=t;}
+    pool.cells.forEach((c,i)=>{ ctx.rows[c.s][c.j][pool.attrPos]=seq[i]; });
+  });
+  for(let s=0;s<ctx.Sn;s++) rebuildSituation(ctx,s);
+  return pools;
+}
+
+/* ---------- optimisers --------------------------------------------------- */
+const EPS=1e-10;
+function snapSit(ctx,s){return{rows:ctx.rows[s].map(a=>a.slice()),contrib:ctx.contrib.map(cr=>cr[s].slice())};}
+function restoreSit(ctx,s,snap){
+  ctx.rows[s]=snap.rows;
+  for(let j=0;j<ctx.J;j++) ctx.X[s][j]=encodeAlt(ctx.params,ctx.K,ctx.rows[s][j],ctx.altIds[j]);
+  for(let r=0;r<ctx.R;r++){const om=ctx.omega[r],cur=ctx.contrib[r][s],sv=snap.contrib[r];
+    for(let i=0;i<ctx.K*ctx.K;i++) om[i]+=sv[i]-cur[i]; ctx.contrib[r][s]=sv;}
+}
+
+async function coordinateExchange(ctx,rng,onTick){
+  let best=derr(ctx), pass=0, improved=true, last=performance.now();
+  while(improved && pass<S.iter && !RUN.cancel){
+    improved=false; pass++;
+    for(let s=0;s<ctx.Sn && !RUN.cancel;s++){
+      for(let j=0;j<ctx.J;j++){
+        for(let a=0;a<ctx.A;a++){
+          const cur=ctx.rows[s][j][a], L=ctx.cellCount[j][a]; if(L<2) continue;
+          let bestLv=cur, bestD=best, snap=snapSit(ctx,s);
+          for(let lv=0;lv<L;lv++){ if(lv===cur) continue;
+            ctx.rows[s][j][a]=lv;
+            if(prohibViolated(ctx,s,j)){ continue; }
+            rebuildSituation(ctx,s);
+            if(S.noDom && dominanceViolated(ctx,s)){ continue; }
+            const d=derr(ctx);
+            if(d<bestD-EPS){ bestD=d; bestLv=lv; }
+          }
+          restoreSit(ctx,s,snap);
+          if(bestLv!==cur){ ctx.rows[s][j][a]=bestLv; rebuildSituation(ctx,s); best=bestD; improved=true; }
+        }
+      }
+      if(performance.now()-last>40){last=performance.now(); onTick&&onTick(); await sleep(0);}
+    }
+  }
+  let v=0; for(let s=0;s<ctx.Sn;s++) if(sitViol(ctx,s)) v++;
+  return {d:best, viol:v};
+}
+async function swapOptimise(ctx,pools,onTick){
+  // Swaps preserve level balance; accept lexicographically: fewer constraint
+  // violations first, then lower D-error. This repairs dominance/prohibitions
+  // present in the balanced starting design instead of merely blocking them.
+  const viol=new Uint8Array(ctx.Sn); let violCount=0;
+  for(let s=0;s<ctx.Sn;s++){viol[s]=sitViol(ctx,s)?1:0; violCount+=viol[s];}
+  let curD=derr(ctx), pass=0, improved=true, last=performance.now();
+  while(improved && pass<S.iter && !RUN.cancel){
+    improved=false; pass++;
+    for(const pool of pools){
+      const cells=pool.cells, a=pool.attrPos;
+      for(let i=0;i<cells.length && !RUN.cancel;i++){
+        for(let k=i+1;k<cells.length;k++){
+          const c1=cells[i],c2=cells[k], diff=(c2.s!==c1.s);
+          const v1=ctx.rows[c1.s][c1.j][a], v2=ctx.rows[c2.s][c2.j][a];
+          if(v1===v2) continue;
+          const snap1=snapSit(ctx,c1.s), snap2=diff?snapSit(ctx,c2.s):null;
+          const oldPair = viol[c1.s] + (diff?viol[c2.s]:0);
+          ctx.rows[c1.s][c1.j][a]=v2; ctx.rows[c2.s][c2.j][a]=v1;
+          rebuildSituation(ctx,c1.s); if(diff) rebuildSituation(ctx,c2.s);
+          const nv1=sitViol(ctx,c1.s)?1:0, nv2=diff?(sitViol(ctx,c2.s)?1:0):0;
+          const newViol=violCount-oldPair+nv1+(diff?nv2:0), newD=derr(ctx);
+          const better=(newViol<violCount)||(newViol===violCount && newD<curD-EPS);
+          if(better){ violCount=newViol; viol[c1.s]=nv1; if(diff)viol[c2.s]=nv2; curD=newD; improved=true; }
+          else { restoreSit(ctx,c1.s,snap1); if(snap2) restoreSit(ctx,c2.s,snap2); }
+        }
+        if(performance.now()-last>40){last=performance.now(); onTick&&onTick(); await sleep(0);}
+      }
+    }
+  }
+  return {d:curD, viol:violCount};
+}
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+/* ---------- main run ----------------------------------------------------- */
+async function generate(){
+  if(RUN.busy) return;
+  syncFromUI();
+  const err=validate(); if(err){ flashError(err); return; }
+  RUN.cancel=false; RUN.busy=true;
+  document.getElementById("emptyState").style.display="none";
+  document.getElementById("runStatus").style.display="block";
+  document.getElementById("btnGenerate").disabled=true;
+  const probe=makeCtx();
+  if(probe.K===0){ flashError("Add at least one attribute with priors."); finishRun(); return; }
+
+  const starts=Math.max(1,S.starts|0);
+  let bestCtx=null, best={viol:Infinity,d:Infinity};
+  for(let st=0; st<starts && !RUN.cancel; st++){
+    const ctx=makeCtx();
+    const rng=mulberry32(((S.seed|0)||1)*7919 + st*104729 + 1);
+    let res;
+    if(S.balance){ const pools=balancedInit(ctx,rng); res=await swapOptimise(ctx,pools,()=>tick(st,starts,best.d)); }
+    else { randomInit(ctx,rng); res=await coordinateExchange(ctx,rng,()=>tick(st,starts,best.d)); }
+    if(res.viol<best.viol || (res.viol===best.viol && res.d<best.d)){ best=res; bestCtx=ctx; }
+    tick(st+1,starts,best.d);
+    await sleep(0);
+  }
+  if(bestCtx) S.result=summarise(bestCtx,best.d,best.viol);
+  finishRun();
+  if(S.result){ renderResults(); }
+}
+function tick(done,total,bestD){
+  document.getElementById("progBar").style.width=Math.round(100*done/total)+"%";
+  document.getElementById("runLabel").textContent =
+    `Optimising — start ${Math.min(done+1,total)}/${total}` + (isFinite(bestD)?`  ·  best D-error ${bestD.toExponential(4)}`:"");
+}
+function finishRun(){
+  RUN.busy=false;
+  document.getElementById("runStatus").style.display="none";
+  document.getElementById("btnGenerate").disabled=false;
+  if(!S.result) document.getElementById("emptyState").style.display="flex";
+}
+
+/* ---------- summarise best design --------------------------------------- */
+function summarise(ctx,dval,infeasible){
+  const K=ctx.K, params=ctx.params;
+  const irows = s => ctx.hasNC ? ctx.X[s].concat([ctx.ncVec]) : ctx.X[s];  // include opt-out in the info matrix
+  // Information at prior means (representative) for SE / t / sample size
+  const omM=new Float64Array(K*K);
+  for(let s=0;s<ctx.Sn;s++){const tmp=new Float64Array(K*K);situationContrib(irows(s),ctx.priorMeans,K,tmp);for(let i=0;i<K*K;i++)omM[i]+=tmp[i];}
+  const detM=det(omM,K);
+  const dpMeans = detM>0 ? Math.pow(detM,-1/K) : Infinity;
+  const avc=inverse(omM,K);
+  const se=new Float64Array(K); for(let k=0;k<K;k++) se[k]= avc? Math.sqrt(Math.max(0,avc[k*K+k])) : NaN;
+  let aerr=0; if(avc){for(let k=0;k<K;k++)aerr+=avc[k*K+k]; aerr/=K;}
+  // parameter rows
+  const z=1.96;
+  const prows=params.map((p,k)=>{
+    const m=ctx.priorMeans[k], s=se[k], t=(s>0&&m!==0)? m/s : NaN;
+    const n=(s>0&&m!==0)? Math.ceil(Math.pow(z*s/Math.abs(m),2)) : null;
+    return {label:p.label,key:p.key,mean:m,se:s,t,n};
+  });
+  const sampleN = prows.reduce((mx,r)=> r.n!=null && r.n>mx ? r.n : mx, 0);
+
+  // utility balance (choice probabilities at prior means; opt-out included when present)
+  const probAll=[]; let optOutShare=0;
+  for(let s=0;s<ctx.Sn;s++){
+    const rows = ctx.hasNC ? ctx.X[s].concat([ctx.ncVec]) : ctx.X[s];
+    const v=[]; let mx=-Infinity;
+    for(let j=0;j<rows.length;j++){let dot=0;for(let k=0;k<K;k++)dot+=rows[j][k]*ctx.priorMeans[k];v.push(dot);if(dot>mx)mx=dot;}
+    let den=0;const e=v.map(x=>{const ex=Math.exp(x-mx);den+=ex;return ex;});
+    const p=e.map(x=>x/den); probAll.push(p); if(ctx.hasNC) optOutShare+=p[p.length-1];
+  }
+  optOutShare = ctx.hasNC ? optOutShare/ctx.Sn : null;
+  const probAltNames = ctx.hasNC ? ctx.altIds.map(altName).concat(["None"]) : ctx.altIds.map(altName);
+
+  // correlation of coded columns over all alt-rows
+  const N=ctx.Sn*ctx.J, cols=[];
+  for(let k=0;k<K;k++){const c=new Float64Array(N);let n=0;for(let s=0;s<ctx.Sn;s++)for(let j=0;j<ctx.J;j++)c[n++]=ctx.X[s][j][k];cols.push(c);}
+  const mean=cols.map(c=>{let m=0;for(let i=0;i<N;i++)m+=c[i];return m/N;});
+  const sd=cols.map((c,k)=>{let v=0;for(let i=0;i<N;i++){const d=c[i]-mean[k];v+=d*d;}return Math.sqrt(v/N);});
+  const corr=[]; let maxCorr=0;
+  for(let a=0;a<K;a++){corr.push(new Float64Array(K));for(let b=0;b<K;b++){
+    if(sd[a]<1e-12||sd[b]<1e-12){corr[a][b]=a===b?1:0;continue;}
+    let cv=0;for(let i=0;i<N;i++)cv+=(cols[a][i]-mean[a])*(cols[b][i]-mean[b]);cv/=N;
+    const r=cv/(sd[a]*sd[b]); corr[a][b]=r; if(a!==b&&Math.abs(r)>maxCorr)maxCorr=Math.abs(r);
+  }}
+
+  // blocking: split the choice situations into S.blocks balanced versions, minimising
+  // the correlation between the block index and the design columns (Ngene-style block diagnostic)
+  let block=null;
+  if(S.blocks>1 && S.blocks<=ctx.Sn){
+    const B=S.blocks, Sn=ctx.Sn, J=ctx.J, rng=mulberry32(((S.seed|0)||1)*131+17);
+    const blk=new Int32Array(Sn); for(let s=0;s<Sn;s++) blk[s]=s%B;
+    for(let s=Sn-1;s>0;s--){const t=Math.floor(rng()*(s+1));const tmp=blk[s];blk[s]=blk[t];blk[t]=tmp;}
+    const blockMaxCorr=(bv)=>{
+      const br=new Float64Array(N); let n=0; for(let s=0;s<Sn;s++)for(let j=0;j<J;j++)br[n++]=bv[s];
+      let bm=0; for(let i=0;i<N;i++)bm+=br[i]; bm/=N;
+      let bsd=0; for(let i=0;i<N;i++){const d=br[i]-bm;bsd+=d*d;} bsd=Math.sqrt(bsd/N);
+      if(bsd<1e-12) return Infinity;
+      let mc=0;
+      for(let k=0;k<K;k++){ if(sd[k]<1e-12)continue; let cv=0; for(let i=0;i<N;i++)cv+=(br[i]-bm)*(cols[k][i]-mean[k]); cv/=N; const r=Math.abs(cv/(bsd*sd[k])); if(r>mc)mc=r; }
+      return mc;
+    };
+    let bestB=blockMaxCorr(blk);
+    for(let pass=0;pass<40;pass++){ let improved=false;
+      for(let s1=0;s1<Sn;s1++)for(let s2=s1+1;s2<Sn;s2++){ if(blk[s1]===blk[s2])continue;
+        const t=blk[s1];blk[s1]=blk[s2];blk[s2]=t;
+        const m=blockMaxCorr(blk);
+        if(m<bestB-1e-9){bestB=m;improved=true;} else {const u=blk[s1];blk[s1]=blk[s2];blk[s2]=u;}
+      }
+      if(!improved)break;
+    }
+    const sizes=new Array(B).fill(0); for(let s=0;s<Sn;s++)sizes[blk[s]]++;
+    block={B, of:Array.from(blk,x=>x+1), sizes, maxCorr:bestB};
+  }
+
+  // D₀-error: D-error at β=0 (orthogonality / balance reference, prior-free)
+  const om0=new Float64Array(K*K), zero=new Float64Array(K);
+  for(let s=0;s<ctx.Sn;s++){const tmp=new Float64Array(K*K);situationContrib(irows(s),zero,K,tmp);for(let i=0;i<K*K;i++)om0[i]+=tmp[i];}
+  const det0=det(om0,K), d0=det0>0?Math.pow(det0,-1/K):Infinity;
+
+  // Bayesian D-error distribution over the prior draws (uses the realised design's Ω per draw)
+  let bayes=null;
+  if(S.method==="bayesian"){
+    const dd=[]; let sing=0;
+    for(let r=0;r<ctx.R;r++){const dv=det(ctx.omega[r],K); if(dv>0)dd.push(Math.pow(dv,-1/K)); else sing++;}
+    const fin=dd.slice().sort((a,b)=>a-b);
+    const mean=fin.length?fin.reduce((a,b)=>a+b,0)/fin.length:Infinity;
+    const median=fin.length?fin[Math.floor(fin.length/2)]:Infinity;
+    let sd=0; if(fin.length){for(const x of fin)sd+=(x-mean)*(x-mean); sd=Math.sqrt(sd/fin.length);}
+    bayes={mean,median,sd,min:fin[0],max:fin[fin.length-1],pctSingular:sing/ctx.R,R:ctx.R};
+  }
+
+  // dominance scan (independent of the constraint toggle)
+  const domTasks=[];
+  for(let s=0;s<ctx.Sn;s++) if(taskDominance(ctx,s)) domTasks.push(s+1);
+
+  // level frequencies (per attribute, or per alternative when alt-specific)
+  const freq=[];
+  S.attributes.forEach((attr,ai)=>{
+    if(S.labeled && attr.altSpecific){
+      for(let j=0;j<ctx.J;j++){ if(!ctx.cellApplies[j][ai]) continue;
+        const lv=ctx.cellLevels[j][ai], counts=new Array(lv.length).fill(0);
+        for(let s=0;s<ctx.Sn;s++)counts[ctx.rows[s][j][ai]]++;
+        freq.push({name:`${attr.name} · ${altName(ctx.altIds[j])}`,labels:lv.map(l=>l.label),counts});
+      }
+    }else{
+      const lv=parseLevels(attr), counts=new Array(lv.length).fill(0); let any=false;
+      for(let s=0;s<ctx.Sn;s++)for(let j=0;j<ctx.J;j++){ if(!ctx.cellApplies[j][ai])continue; any=true; counts[ctx.rows[s][j][ai]]++; }
+      if(any) freq.push({name:attr.name,labels:lv.map(l=>l.label),counts});
+    }
+  });
+
+  // design as labels ("—" where an attribute does not apply to an alternative)
+  const design=[];
+  for(let s=0;s<ctx.Sn;s++){const r=[];for(let j=0;j<ctx.J;j++){
+    r.push(S.attributes.map((attr,ai)=> ctx.cellApplies[j][ai] ? ctx.cellLevels[j][ai][ctx.rows[s][j][ai]].label : "—"));
+  }design.push(r);}
+
+  // attributes-per-alternative count (cognitive load)
+  const attrsPerAlt=[]; for(let j=0;j<ctx.J;j++){let c=0;for(let ai=0;ai<ctx.A;ai++)if(ctx.cellApplies[j][ai])c++;attrsPerAlt.push(c);}
+
+  return {
+    method:S.method, K, J:ctx.J, Sn:ctx.Sn, R:ctx.R, infeasible:infeasible||0,
+    derr:dval, dpMeans, aerr, d0, bayes, domTasks, attrsPerAlt,
+    params:prows, sampleN, probAll, probAltNames, hasNC:ctx.hasNC, optOutShare, block,
+    corr, maxCorr, freq, design,
+    avc, // K×K variance-covariance (flat); use avc[a*K+b]
+    altNames:ctx.altIds.map(altName), attrNames:S.attributes.map(a=>a.name),
+    Xmatrix: ctx.X, paramLabels: params.map(p=>p.label),
+    rows: ctx.rows,
+    maxLevels: Math.max(...S.attributes.map(a=>parseLevels(a).length),0)
+  };
+}
+
+/* ============================== UI ====================================== */
+const $=id=>document.getElementById(id);
+const ce=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e;};
+
+function renderConfig(){
+  $("cfgRows").value=S.rows; $("cfgAlts").value=S.alts; $("cfgStarts").value=S.starts;
+  $("cfgIter").value=S.iter; $("cfgLabeled").checked=S.labeled; $("cfgDraws").value=S.draws;
+  $("cfgSeed").value=S.seed; $("cfgBalance").checked=S.balance; $("cfgNoDom").checked=S.noDom;
+  $("cfgNoChoice").checked=S.noChoice; $("cfgBlocks").value=S.blocks||1;
+  $("numAttr").textContent="3";
+  document.querySelectorAll("#segMethod button").forEach(b=>b.classList.toggle("on",b.dataset.m===S.method));
+  $("bayesRow").style.display = S.method==="bayesian"?"flex":"none";
+  $("methodHelp").textContent = S.method==="bayesian"
+    ? "Minimises the Bayesian (Db) error: the mean local D-error over random draws from your prior distributions."
+    : "Minimises the D-error of the MNL Fisher-information matrix evaluated at your prior values.";
+  $("altCard").style.display = S.labeled ? "block":"none";
+  $("balanceNote").style.display = S.balance ? "block":"none";
+  renderAlts(); renderAttrs(); renderPriors(); renderProhib();
+}
+function renderAlts(){
+  const box=$("altList"); box.innerHTML="";
+  S.alternatives.slice(0,S.alts).forEach((alt,idx)=>{
+    const row=ce("div","inline"); row.style.marginBottom="8px";
+    const nm=ce("input"); nm.type="text"; nm.value=alt.name; nm.style.flex="1";
+    nm.oninput=()=>{alt.name=nm.value;};
+    row.appendChild(nm);
+    if(idx===0){ row.appendChild(ce("span","pill","reference")); }
+    else{
+      const sw=ce("label","switch");
+      const cb=ce("input"); cb.type="checkbox"; cb.checked=alt.asc; cb.onchange=()=>{alt.asc=cb.checked; rebuildParams(); renderPriors();};
+      sw.appendChild(cb); sw.appendChild(ce("span",null,"ASC"));
+      row.appendChild(sw);
+    }
+    box.appendChild(row);
+  });
+}
+function renderAttrs(){
+  const box=$("attrList"); box.innerHTML=""; $("numAttr").textContent=S.attributes.length;
+  S.attributes.forEach((attr,ai)=>{
+    const card=ce("div","attr");
+    const hd=ce("div","hd");
+    const nm=ce("input","nm"); nm.type="text"; nm.value=attr.name; nm.oninput=()=>{attr.name=nm.value; rebuildParams(); renderPriors(); renderProhib();};
+    const del=ce("button","btn ghost sm danger","✕"); del.onclick=()=>{S.attributes.splice(ai,1); rebuildParams(); renderAttrs(); renderPriors(); renderProhib();};
+    hd.appendChild(nm); hd.appendChild(del);
+    const bd=ce("div","bd");
+
+    const r1=ce("div","row");
+    const typeWrap=ce("label","field"); typeWrap.appendChild(ce("span",null,"Type"));
+    const sel=ce("select"); sel.innerHTML=`<option value="categorical">Categorical</option><option value="continuous">Continuous</option>`;
+    sel.value=attr.type; sel.onchange=()=>{attr.type=sel.value; if(attr.type==="continuous"&&!/\d/.test(attr.levelsText))attr.levelsText="10, 20, 30"; rebuildParams(); renderAttrs(); renderPriors();};
+    typeWrap.appendChild(sel); r1.appendChild(typeWrap);
+
+    if(attr.type==="categorical"){
+      const codeWrap=ce("label","field"); codeWrap.appendChild(ce("span",null,"Coding"));
+      const cs=ce("select"); cs.innerHTML=`<option value="dummy">Dummy</option><option value="effects">Effects</option>`;
+      cs.value=attr.coding; cs.onchange=()=>{attr.coding=cs.value; rebuildParams(); renderPriors();};
+      codeWrap.appendChild(cs); r1.appendChild(codeWrap);
+    }
+    bd.appendChild(r1);
+
+    const lv=ce("label","field"); lv.appendChild(ce("span",null, attr.type==="continuous"?"Levels (numeric, comma-separated)":"Levels (comma-separated; first = reference)"));
+    const lt=ce("input"); lt.type="text"; lt.value=attr.levelsText; lt.oninput=()=>{attr.levelsText=lt.value; rebuildParams(); renderPriors(); renderProhib();};
+    lv.appendChild(lt); bd.appendChild(lv);
+
+    const r2=ce("div","inline"); r2.style.flexWrap="wrap"; r2.style.gap="14px";
+    const dirWrap=ce("label","inline");
+    dirWrap.appendChild(ce("span","small","Preferred:"));
+    const ds=ce("select"); ds.style.width="auto"; ds.innerHTML=`<option value="0">no direction</option><option value="1">higher better</option><option value="-1">lower better</option>`;
+    ds.value=String(attr.direction); ds.onchange=()=>{attr.direction=parseInt(ds.value);};
+    dirWrap.appendChild(ds); r2.appendChild(dirWrap);
+    if(S.labeled){
+      const sw=ce("label","switch");
+      const cb=ce("input"); cb.type="checkbox"; cb.checked=attr.altSpecific; cb.onchange=()=>{attr.altSpecific=cb.checked; rebuildParams(); renderAttrs(); renderPriors();};
+      sw.appendChild(cb); sw.appendChild(ce("span",null,"alt-specific coeff.")); r2.appendChild(sw);
+    }
+    bd.appendChild(r2);
+
+    if(S.labeled){
+      // availability: which alternatives include this attribute
+      const av=ce("div"); av.style.marginTop="10px";
+      av.appendChild(ce("div","small","Appears in alternatives:"));
+      const avRow=ce("div","inline"); avRow.style.flexWrap="wrap"; avRow.style.gap="12px"; avRow.style.marginTop="4px";
+      S.alternatives.slice(0,S.alts).forEach(alt=>{
+        const lab=ce("label","switch");
+        const cb=ce("input"); cb.type="checkbox";
+        cb.checked = !attr.appliesTo || attr.appliesTo.includes(alt.id);
+        cb.onchange=()=>{
+          let set = attr.appliesTo ? attr.appliesTo.slice() : S.alternatives.slice(0,S.alts).map(a=>a.id);
+          if(cb.checked){ if(!set.includes(alt.id)) set.push(alt.id); }
+          else set = set.filter(x=>x!==alt.id);
+          const allIds=S.alternatives.slice(0,S.alts).map(a=>a.id);
+          attr.appliesTo = set.length===allIds.length ? null : set;
+          rebuildParams(); renderAttrs(); renderPriors();
+        };
+        lab.appendChild(cb); lab.appendChild(ce("span",null,alt.name)); avRow.appendChild(lab);
+      });
+      av.appendChild(avRow); bd.appendChild(av);
+
+      // per-alternative level overrides (only meaningful for alt-specific coefficients)
+      if(attr.altSpecific){
+        const ov=ce("div"); ov.style.marginTop="10px";
+        ov.appendChild(ce("div","small","Per-alternative levels (blank = use levels above):"));
+        S.alternatives.slice(0,S.alts).forEach(alt=>{
+          if(!attrAppliesToAlt(attr,alt.id)) return;
+          const w=ce("label","field"); w.style.margin="6px 0 0";
+          w.appendChild(ce("span",null,alt.name));
+          const inp=ce("input"); inp.type="text"; inp.placeholder=attr.levelsText;
+          inp.value=(attr.altLevels&&attr.altLevels[alt.id])||"";
+          inp.oninput=()=>{ if(!attr.altLevels)attr.altLevels={}; attr.altLevels[alt.id]=inp.value; rebuildParams(); renderPriors(); };
+          w.appendChild(inp); ov.appendChild(w);
+        });
+        bd.appendChild(ov);
+      }
+    }
+
+    card.appendChild(hd); card.appendChild(bd); box.appendChild(card);
+  });
+}
+function renderPriors(){
+  rebuildParams();
+  const box=$("priorTable"); box.innerHTML="";
+  if(S._params.length===0){ box.appendChild(ce("div","small","No parameters yet — add attributes/levels.")); return; }
+  const tbl=ce("table"); const bay=S.method==="bayesian";
+  const head=ce("tr",null,`<th class="lbl" style="text-align:left">Parameter</th><th>Prior mean</th>${bay?'<th>Prior s.d.</th>':''}`);
+  tbl.appendChild(head);
+  S._params.forEach(p=>{
+    const pr=S.priors[p.key]||{mean:0,sd:0};
+    const tr=ce("tr");
+    const c0=ce("td","lbl"); c0.textContent=p.label; c0.style.textAlign="left"; tr.appendChild(c0);
+    const c1=ce("td"); const im=ce("input"); im.type="number"; im.step="0.01"; im.value=pr.mean; im.style.width="90px";
+    im.oninput=()=>{S.priors[p.key].mean=parseFloat(im.value)||0;}; c1.appendChild(im); tr.appendChild(c1);
+    if(bay){const c2=ce("td"); const isd=ce("input"); isd.type="number"; isd.step="0.01"; isd.min="0"; isd.value=pr.sd; isd.style.width="90px";
+      isd.oninput=()=>{S.priors[p.key].sd=Math.max(0,parseFloat(isd.value)||0);}; c2.appendChild(isd); tr.appendChild(c2);}
+    tbl.appendChild(tr);
+  });
+  box.appendChild(tbl);
+}
+function renderProhib(){
+  const box=$("prohibList"); box.innerHTML="";
+  S.prohib.forEach((pr,i)=>{
+    const row=ce("div","inline"); row.style.marginBottom="6px"; row.style.flexWrap="wrap";
+    const mk=(attrId,levelIdx,onAttr,onLevel)=>{
+      const as=ce("select"); as.style.width="auto";
+      S.attributes.forEach(a=>{const o=ce("option");o.value=a.id;o.textContent=a.name;as.appendChild(o);});
+      as.value=attrId||(S.attributes[0]&&S.attributes[0].id); onAttr(parseInt(as.value));
+      const ls=ce("select"); ls.style.width="auto";
+      const fill=(aid,sel)=>{ls.innerHTML="";const at=S.attributes.find(a=>a.id===aid);(parseLevels(at||{type:"categorical",levelsText:""})).forEach((l,li)=>{const o=ce("option");o.value=li;o.textContent=l.label;ls.appendChild(o);});ls.value=sel||0;};
+      fill(parseInt(as.value),levelIdx); onLevel(parseInt(ls.value)||0);
+      as.onchange=()=>{onAttr(parseInt(as.value));fill(parseInt(as.value),0);onLevel(0);};
+      ls.onchange=()=>onLevel(parseInt(ls.value)||0);
+      const w=ce("span","inline"); w.appendChild(as); w.appendChild(ls); return w;
+    };
+    row.appendChild(mk(pr.attrA,pr.levelA,v=>pr.attrA=v,v=>pr.levelA=v));
+    row.appendChild(ce("span","small","+"));
+    row.appendChild(mk(pr.attrB,pr.levelB,v=>pr.attrB=v,v=>pr.levelB=v));
+    const del=ce("button","btn ghost sm danger","✕"); del.onclick=()=>{S.prohib.splice(i,1);renderProhib();};
+    row.appendChild(del); box.appendChild(row);
+  });
+}
+
+/* ---------- results rendering ------------------------------------------- */
+function renderResults(){
+  const R=S.result; if(!R) return;
+  $("resultArea").style.display="block"; $("emptyState").style.display="none";
+  const fmt=(x,d=4)=>!isFinite(x)?"∞":x.toFixed(d);
+  const m=$("metrics"); m.innerHTML="";
+  const cards=[
+    {k:S.method==="bayesian"?"Db-error":"D-error", v:isFinite(R.derr)?R.derr.toExponential(3):"∞", s:S.method==="bayesian"?`mean over ${R.R} draws`:"at prior means", hl:true},
+    {k:"D₀-error", v:isFinite(R.d0)?R.d0.toExponential(3):"∞", s:"at β=0 (orthogonal ref.)"},
+    {k:"A-error", v:isFinite(R.aerr)?R.aerr.toFixed(4):"∞", s:"trace(AVC)/K"},
+    {k:"Parameters (K)", v:R.K, s:`${R.Sn} tasks × ${R.J} alts`},
+    {k:"Max |corr|", v:R.maxCorr.toFixed(3), s:R.maxCorr<0.2?"near-orthogonal":(R.maxCorr<0.5?"moderate":"high")},
+    {k:"Min. sample size", v:R.sampleN||"—", s:"resp. for all |t|>1.96"},
+  ];
+  cards.forEach(c=>{const el=ce("div","metric"+(c.hl?" hl":""));el.innerHTML=`<div class="k">${c.k}</div><div class="v">${c.v}</div><div class="s">${c.s}</div>`;m.appendChild(el);});
+
+  // ---- design table ----
+  const altClass=["alt-a","alt-b","alt-c","alt-d"], blk=R.block;
+  let h=`<div class="tbl-scroll"><table><tr>${blk?`<th rowspan="2">Block</th>`:""}<th rowspan="2">Task</th>`;
+  R.altNames.forEach((an,j)=>{h+=`<th colspan="${R.attrNames.length}" class="${altClass[j%4]}">${esc(an)}</th>`;});
+  if(R.hasNC) h+=`<th rowspan="2">None</th>`;
+  h+=`</tr><tr>`;
+  R.altNames.forEach((an,j)=>{R.attrNames.forEach(at=>{h+=`<th class="${altClass[j%4]}">${esc(at)}</th>`;});});
+  h+=`</tr>`;
+  // optional: order rows by block so versions are contiguous
+  const order=blk ? R.design.map((_,s)=>s).sort((a,b)=>blk.of[a]-blk.of[b]||a-b) : R.design.map((_,s)=>s);
+  order.forEach(s=>{const task=R.design[s];
+    h+=`<tr>${blk?`<td class="lbl mono">${blk.of[s]}</td>`:""}<td class="lbl mono">${s+1}</td>`;
+    task.forEach((alt,j)=>{alt.forEach(v=>{h+=`<td class="${altClass[j%4]}">${esc(v)}</td>`;});});
+    if(R.hasNC) h+=`<td class="lbl">opt-out</td>`;
+    h+=`</tr>`;});
+  h+=`</table></div>`;
+  if(blk) h+=`<div class="note">Design split into <b>${blk.B} blocks</b> (sizes ${blk.sizes.join(", ")}). Each respondent answers one block; max |correlation(block, attribute)| = <b>${blk.maxCorr.toFixed(3)}</b> (lower = block is independent of the attributes).</div>`;
+  if(R.hasNC) h+=`<div class="note" style="margin-top:8px">A constant <b>no-choice / opt-out</b> alternative is present in every task (its prior is the “No-choice constant”). Average opt-out share ≈ <b>${(R.optOutShare*100).toFixed(0)}%</b>.</div>`;
+  $("pane-design").innerHTML=h;
+
+  // ---- parameter stats ----
+  let ps=`<div class="tbl-scroll"><table><tr><th class="lbl" style="text-align:left">Parameter</th><th>Prior</th><th>Std. error</th><th>t-ratio</th><th>n for |t|&gt;1.96</th></tr>`;
+  R.params.forEach(p=>{
+    const tcls=!isFinite(p.t)?"":(Math.abs(p.t)>=1.96?"t-good":(Math.abs(p.t)>=1?"t-warn":"t-bad"));
+    ps+=`<tr><td class="lbl" style="text-align:left">${esc(p.label)}</td>
+      <td class="mono">${p.mean.toFixed(3)}</td>
+      <td class="mono">${isFinite(p.se)?p.se.toFixed(4):"—"}</td>
+      <td class="mono ${tcls}">${isFinite(p.t)?p.t.toFixed(3):"—"}</td>
+      <td class="mono">${p.n!=null?p.n:"—"}</td></tr>`;
+  });
+  ps+=`</table></div><div class="note">Standard errors are for <b>one respondent</b> at the prior values (AVC = Ω⁻¹). The
+   <b>t-ratio</b> = prior ÷ s.e.; the last column is the number of respondents needed to make that estimate significant
+   at 95%. Smallest viable sample for the whole design: <b>${R.sampleN||"—"}</b> respondents.</div>`;
+  if(R.bayes){
+    const b=R.bayes, e=x=>isFinite(x)?x.toExponential(3):"∞";
+    ps+=`<div class="card" style="margin-top:14px"><h3>Bayesian D-error distribution (${b.R} draws)</h3><div class="body">
+      <div class="metrics" style="margin:0">
+        <div class="metric"><div class="k">mean (Db)</div><div class="v">${e(b.mean)}</div></div>
+        <div class="metric"><div class="k">median</div><div class="v">${e(b.median)}</div></div>
+        <div class="metric"><div class="k">min</div><div class="v">${e(b.min)}</div></div>
+        <div class="metric"><div class="k">max</div><div class="v">${e(b.max)}</div></div>
+        <div class="metric"><div class="k">std. dev.</div><div class="v">${e(b.sd)}</div></div>
+        <div class="metric"><div class="k">singular draws</div><div class="v">${(b.pctSingular*100).toFixed(0)}%</div></div>
+      </div>
+      <div class="small" style="margin-top:8px">A low mean with a tight spread (small max/sd) means the design stays efficient across the whole prior range — the goal of a Bayesian design. Singular draws &gt; 0 indicate prior combinations the design cannot identify.</div>
+    </div></div>`;
+  }
+  // full variance-covariance matrix
+  const lab=R.paramLabels;
+  let av=`<details style="margin-top:12px"><summary>Show full variance–covariance matrix (AVC = Ω⁻¹, N=1)</summary><div class="tbl-scroll" style="margin-top:8px"><table><tr><th></th>${lab.map(l=>`<th>${esc(shrt(l))}</th>`).join("")}</tr>`;
+  for(let a=0;a<R.K;a++){av+=`<tr><td class="lbl" style="text-align:left">${esc(shrt(lab[a]))}</td>`;
+    for(let b=0;b<R.K;b++){const v=R.avc?R.avc[a*R.K+b]:NaN;av+=`<td class="mono" style="color:${a===b?'var(--accent)':''}">${isFinite(v)?v.toFixed(4):"—"}</td>`;}
+    av+=`</tr>`;}
+  av+=`</table></div></details>`;
+  ps+=av;
+  $("pane-stats").innerHTML=ps;
+
+  // ---- diagnostics ----
+  let dg="";
+  // level balance
+  dg+=`<div class="card"><h3>Attribute level balance</h3><div class="body">`;
+  R.freq.forEach(f=>{
+    const total=f.counts.reduce((a,b)=>a+b,0), ideal=total/f.counts.length;
+    dg+=`<div style="margin-bottom:8px"><div class="small" style="color:var(--ink);font-weight:600;margin-bottom:3px">${esc(f.name)}</div>`;
+    f.counts.forEach((c,i)=>{
+      const w=Math.round(100*c/total), off=Math.abs(c-ideal)>0.5;
+      dg+=`<div class="inline" style="margin-bottom:2px"><span class="small" style="width:120px;text-align:right;margin-right:8px">${esc(f.labels[i])}</span>
+        <div style="flex:1;background:var(--bg);border-radius:6px;overflow:hidden;height:14px;border:1px solid var(--line)">
+        <div style="height:100%;width:${w}%;background:${off?'var(--warn)':'var(--accent)'}"></div></div>
+        <span class="small mono" style="width:42px;text-align:right">${c}</span></div>`;
+    });
+    dg+=`</div>`;
+  });
+  dg+=`</div></div>`;
+  // utility balance
+  const ub=R.probAll.map(p=>Math.max(...p));
+  const avgMax=ub.reduce((a,b)=>a+b,0)/ub.length;
+  const ubNames = R.probAltNames || R.altNames;
+  dg+=`<div class="card"><h3>Utility (choice) balance</h3><div class="body">
+    <div class="small" style="margin-bottom:8px">Choice probabilities per task at prior values. Tasks where one option is near-certain (prob → 1) carry little information. Average dominant-option probability: <b>${(avgMax*100).toFixed(0)}%</b>.${R.hasNC?` Average opt-out (None) share: <b>${(R.optOutShare*100).toFixed(0)}%</b>.`:""}</div>
+    <div class="tbl-scroll" style="max-height:220px"><table><tr><th>Task</th>${ubNames.map(a=>`<th>${esc(a)}</th>`).join("")}</tr>`;
+  R.probAll.forEach((p,s)=>{dg+=`<tr><td class="lbl mono">${s+1}</td>${p.map(x=>{const hot=x>0.85;return `<td class="mono ${hot?'t-warn':''}">${(x*100).toFixed(0)}%</td>`;}).join("")}</tr>`;});
+  dg+=`</table></div></div></div>`;
+  // correlation
+  dg+=`<div class="card"><h3>Attribute correlation (orthogonality)</h3><div class="body"><div class="tbl-scroll"><table><tr><th></th>${R.paramLabels.map(l=>`<th>${esc(shrt(l))}</th>`).join("")}</tr>`;
+  R.corr.forEach((rowv,a)=>{dg+=`<tr><td class="lbl" style="text-align:left">${esc(shrt(R.paramLabels[a]))}</td>`;
+    rowv.forEach((v,b)=>{const hot=a!==b&&Math.abs(v)>0.5;dg+=`<td class="mono ${hot?'corr-hot':''}" style="color:${a===b?'var(--faint)':''}">${v.toFixed(2)}</td>`;});
+    dg+=`</tr>`;});
+  dg+=`</table></div><div class="small" style="margin-top:8px">Off-diagonal values near 0 = orthogonal (ideal). Highlighted cells exceed 0.5.</div></div></div>`;
+  $("pane-diag").innerHTML=dg;
+
+  // ---- assessment ----
+  renderAssessment(R);
+
+  // ---- export ----
+  $("pane-export").innerHTML=`
+    <div class="card"><h3>Export</h3><div class="body">
+      <div class="inline" style="gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn" id="dlWide">⬇ Design (wide CSV)</button>
+        <button class="btn" id="dlLong">⬇ Coded matrix (long CSV)</button>
+        <button class="btn" id="dlNgene">⬇ Ngene-style syntax</button>
+        <button class="btn ghost" id="cpWide">Copy design</button>
+      </div>
+      <div class="small" style="margin-bottom:6px">Wide format = one row per choice task (for review). Long format = one row per alternative with dummy/effects-coded columns (ready for estimation in Apollo / Biogeme / R mlogit).</div>
+      <details><summary>Preview Ngene-style syntax</summary><pre class="mono" style="white-space:pre-wrap;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;font-size:11.5px">${esc(ngeneSyntax())}</pre></details>
+    </div></div>`;
+  $("dlWide").onclick=()=>download("choiceforge_design_wide.csv",csvWide());
+  $("dlLong").onclick=()=>download("choiceforge_design_long.csv",csvLong());
+  $("dlNgene").onclick=()=>download("choiceforge_syntax.txt",ngeneSyntax());
+  $("cpWide").onclick=()=>{navigator.clipboard.writeText(csvWide());$("cpWide").textContent="Copied!";setTimeout(()=>$("cpWide").textContent="Copy design",1200);};
+}
+const shrt=s=>s.length>14?s.slice(0,13)+"…":s;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- automated commentary on the generated design ----------------- */
+function renderAssessment(R){
+  const items=[];
+  const add=(st,txt)=>items.push({st,txt});
+  const hasPriors=R.params.some(p=>p.mean!==0);
+  const pct=x=>(x*100).toFixed(0)+"%";
+
+  if(R.infeasible>0) add("bad",`<b>${R.infeasible} task(s) still violate the active constraints.</b> The optimiser could not satisfy every constraint while keeping the design level-balanced. Relax level balance, loosen the prohibitions, or add more choice situations, then regenerate.`);
+
+  // 1) Dominance
+  if(!hasPriors){
+    add("info",`Dominance can't be judged without priors (all priors are 0). Set priors or click <b>Suggest priors</b>, then regenerate to check for dominated alternatives.`);
+  }else if(R.domTasks.length===0){
+    add("good",`No dominated alternatives — every choice task presents a genuine trade-off.`);
+  }else{
+    add("warn",`<b>${R.domTasks.length} of ${R.Sn} tasks contain a dominated alternative</b> (task ${R.domTasks.slice(0,12).join(", ")}${R.domTasks.length>12?"…":""}). Respondents face no real trade-off there. Turn on <i>Remove dominated alternatives</i> in Constraints, or revise the levels, and regenerate.`);
+  }
+
+  // 2) Choice / utility balance
+  const maxp=R.probAll.map(p=>Math.max(...p));
+  const avgMax=maxp.reduce((a,b)=>a+b,0)/maxp.length;
+  const nNear=maxp.filter(x=>x>0.9).length, nExt=maxp.filter(x=>x>0.95).length;
+  if(avgMax<0.78 && nNear===0) add("good",`Choice tasks are well balanced (average dominant-option probability ${pct(avgMax)}); each task is informative.`);
+  else if(nNear>0) add("warn",`${nNear} task(s) are near-deterministic (one option &gt; 90% likely${nExt?`, ${nExt} &gt; 95%`:""}) — these add little statistical information. Consider narrowing level ranges or adding priors uncertainty.`);
+  else add("info",`Average dominant-option probability is ${pct(avgMax)} — acceptable but on the strong side; very high values waste respondent effort.`);
+
+  // 3) Orthogonality
+  if(R.maxCorr<0.3) add("good",`Attributes are near-orthogonal (max |corr| = ${R.maxCorr.toFixed(2)}); little confounding between effects.`);
+  else if(R.maxCorr<0.6) add("info",`Moderate attribute correlation (max |corr| = ${R.maxCorr.toFixed(2)}). This is normal for efficient designs — efficiency, not orthogonality, is being optimised.`);
+  else add("warn",`High attribute correlation (max |corr| = ${R.maxCorr.toFixed(2)}); some parameters may be hard to separate. Check the correlation matrix in Diagnostics.`);
+
+  // 4) Statistical power
+  if(R.sampleN){
+    const weak=R.params.filter(p=>p.n!=null).sort((a,b)=>b.n-a.n)[0];
+    add(R.sampleN<=400?"good":"info",`Estimated minimum sample ≈ <b>${R.sampleN} respondents</b> for every prior to reach significance at 95%${weak?` (driven by <i>${esc(weak.label)}</i>)`:""}. Designs are commonly fielded above this for safety.`);
+  }else{
+    add("info",`Sample-size guidance needs non-zero priors. Add priors (or Suggest priors) to estimate the respondents required.`);
+  }
+
+  // 5) Respondent burden / understandability (tasks-per-respondent shrinks with blocking)
+  const maxA=Math.max(...R.attrsPerAlt), burden=[];
+  const perResp = R.block ? Math.max(...R.block.sizes) : R.Sn;
+  if(maxA<=5) burden.push(`${maxA} attributes per option (manageable)`);
+  else if(maxA<=6) burden.push(`${maxA} attributes per option (borderline)`);
+  else burden.push(`<b>${maxA} attributes per option</b> — high cognitive load; respondents may simplify`);
+  burden.push(`${R.J}${R.hasNC?"+opt-out":""} alternatives`);
+  const tlabel = R.block ? `${perResp} tasks/respondent (${R.Sn} total in ${R.block.B} blocks)` : `${R.Sn} tasks`;
+  if(perResp<=12) burden.push(`${tlabel} (light)`);
+  else if(perResp<=16) burden.push(`${tlabel} (moderate)`);
+  else burden.push(`<b>${tlabel}</b> — watch for fatigue; increase blocks to shorten each version`);
+  if(R.maxLevels>5) burden.push(`up to <b>${R.maxLevels} levels</b> on an attribute (harder to evaluate)`);
+  add(maxA>6||perResp>16?"warn":"good",`Respondent burden: ${burden.join(" · ")}.`);
+
+  // 6) Level balance
+  const imb=R.freq.filter(f=>{const mx=Math.max(...f.counts),mn=Math.min(...f.counts);return mx-mn>1;}).map(f=>f.name);
+  if(imb.length===0) add("good",`All attributes are level-balanced (each level appears about equally often).`);
+  else add("info",`Uneven level frequencies for: ${imb.map(esc).join(", ")}. Normal for efficient designs (extreme levels carry more information); enable <i>Enforce attribute level balance</i> if equal occurrence is required.`);
+
+  // verdict summary
+  const nWarn=items.filter(i=>i.st==="warn").length, nGood=items.filter(i=>i.st==="good").length, nBad=items.filter(i=>i.st==="bad").length;
+  const verdict = nBad>0 ? {st:"bad",t:`${nBad} blocking issue(s) — the design is not yet usable.`}
+                : nWarn===0 ? {st:"good",t:"Strong design — no major concerns flagged."}
+                : nWarn<=2 ? {st:"info",t:`Usable design with ${nWarn} point(s) to review below.`}
+                : {st:"warn",t:`${nWarn} concerns flagged — review before fielding.`};
+  const ico={good:'<span class="t-good">✓</span>',warn:'<span class="t-warn">⚠</span>',info:'<span class="t-good" style="color:var(--accent2)">•</span>',bad:'<span class="t-bad">✕</span>'};
+
+  let h=`<div class="card"><h3>Overall verdict</h3><div class="body">
+    <div class="inline" style="gap:10px;font-size:15px;font-weight:600">${ico[verdict.st]} ${esc(verdict.t)}</div>
+    <div class="small" style="margin-top:6px">${nGood} good · ${nWarn} to review · ${items.length} checks</div></div></div>`;
+  h+=`<div class="card"><h3>Detailed checks</h3><div class="body">`;
+  items.forEach(it=>{ h+=`<div class="inline" style="align-items:flex-start;gap:9px;margin-bottom:11px">
+    <span style="font-size:15px;line-height:1.3">${ico[it.st]}</span>
+    <span style="flex:1">${it.txt}</span></div>`; });
+  h+=`</div></div>`;
+  $("pane-assess").innerHTML=h;
+}
+
+/* ---------- export builders --------------------------------------------- */
+function csvWide(){
+  const R=S.result; const head=R.block?["block","task"]:["task"];
+  R.altNames.forEach(an=>R.attrNames.forEach(at=>head.push(`${an}.${at}`)));
+  const lines=[head.join(",")];
+  R.design.forEach((task,s)=>{const row=R.block?[R.block.of[s],s+1]:[s+1];task.forEach(alt=>alt.forEach(v=>row.push(csvCell(v))));lines.push(row.join(","));});
+  return lines.join("\n");
+}
+function csvLong(){
+  const R=S.result, head=R.block?["block","task","alt","alt_name"]:["task","alt","alt_name"];
+  R.paramLabels.forEach(l=>head.push(cleanCol(l)));
+  // also raw level columns
+  R.attrNames.forEach(a=>head.push("raw_"+cleanCol(a)));
+  const lines=[head.join(",")];
+  for(let s=0;s<R.Sn;s++)for(let j=0;j<R.J;j++){
+    const row=R.block?[R.block.of[s],s+1,j+1,csvCell(R.altNames[j])]:[s+1,j+1,csvCell(R.altNames[j])];
+    for(let k=0;k<R.K;k++) row.push(R.Xmatrix[s][j][k]);
+    R.attrNames.forEach((a,ai)=>row.push(csvCell(R.design[s][j][ai])));
+    lines.push(row.join(","));
+  }
+  return lines.join("\n");
+}
+function ngeneSyntax(){
+  const R=S.result;
+  let alts=R.altNames.map((an,j)=>{
+    const terms=[];
+    S.attributes.forEach((attr,ai)=>{
+      const lv=parseLevels(attr).map(l=>attr.type==="continuous"?l.value:l.label).join(", ");
+      terms.push(`${shortCode(attr.name)}[${lv}]`);
+    });
+    return `${shortCode(an)} = ${terms.join(" + ")}`;
+  });
+  const head=`Design\n;alts = ${R.altNames.map(shortCode).join(", ")}\n;rows = ${R.Sn}\n;eff = (mnl,d${S.method==="bayesian"?",mean":""})`;
+  const priors=R.params.map(p=>`${cleanCol(p.label)} = ${p.mean}`).join("\n");
+  return `/* ChoiceForge — Ngene-style description (illustrative, adapt to your Ngene version) */\n${head}\n;model:\nU(${R.altNames.map(shortCode).join(") / U(")})\n\n/* Priors */\n${priors}\n\n/* Attribute levels */\n${alts.join("\n")}\n\n/* This tool exports the realised design — import the CSV directly for estimation. */`;
+}
+const shortCode=s=>s.replace(/[^A-Za-z0-9]/g,"").slice(0,8)||"x";
+const cleanCol=s=>s.replace(/[^A-Za-z0-9]+/g,"_").replace(/^_|_$/g,"");
+const csvCell=v=>/[",\n]/.test(String(v))?`"${String(v).replace(/"/g,'""')}"`:String(v);
+function download(name,text){const b=new Blob([text],{type:"text/csv"});const u=URL.createObjectURL(b);const a=ce("a");a.href=u;a.download=name;a.click();URL.revokeObjectURL(u);}
+
+/* ---------- validation + sync ------------------------------------------- */
+function validate(){
+  if(S.attributes.length===0) return "Add at least one attribute.";
+  for(const a of S.attributes){
+    const lv=parseLevels(a);
+    if(lv.length<2) return `Attribute “${a.name}” needs at least 2 levels.`;
+    if(a.type==="continuous"&&lv.some(x=>!isFinite(x.value))) return `Continuous attribute “${a.name}” has non-numeric levels.`;
+  }
+  rebuildParams();
+  if(S._params.length===0) return "No parameters to estimate — check attributes.";
+  if(S.rows<2) return "Need at least 2 choice situations.";
+  if(S.rows < S._params.length) return `Only ${S.rows} tasks for ${S._params.length} parameters — increase choice situations (need ≥ ${S._params.length}).`;
+  return null;
+}
+function syncFromUI(){
+  S.rows=clampInt($("cfgRows").value,2,400,12);
+  S.alts=clampInt($("cfgAlts").value,2,6,2);
+  S.starts=clampInt($("cfgStarts").value,1,300,10);
+  S.iter=clampInt($("cfgIter").value,1,300,50);
+  S.draws=clampInt($("cfgDraws").value,4,1000,80);
+  S.seed=clampInt($("cfgSeed").value,1,1e9,12345);
+  S.blocks=clampInt($("cfgBlocks").value,1,20,1);
+  S.noChoice=$("cfgNoChoice").checked;
+  // ensure enough alternative objects
+  while(S.alternatives.length<S.alts) S.alternatives.push({id:uid(),name:"Option "+String.fromCharCode(65+S.alternatives.length),asc:false});
+}
+const clampInt=(v,lo,hi,d)=>{let n=parseInt(v);if(!isFinite(n))n=d;return Math.max(lo,Math.min(hi,n));};
+function flashError(msg){
+  const n=$("methodHelp"); // reuse area
+  alert(msg);
+}
+
+/* ---------- wiring ------------------------------------------------------- */
+function wire(){
+  $("cfgRows").onchange=()=>{S.rows=clampInt($("cfgRows").value,2,400,12);};
+  $("cfgAlts").onchange=()=>{S.alts=clampInt($("cfgAlts").value,2,6,2);syncFromUI();renderConfig();};
+  $("cfgStarts").onchange=()=>{S.starts=clampInt($("cfgStarts").value,1,300,10);};
+  $("cfgIter").onchange=()=>{S.iter=clampInt($("cfgIter").value,1,300,50);};
+  $("cfgSeed").onchange=()=>{S.seed=clampInt($("cfgSeed").value,1,1e9,12345);};
+  $("cfgDraws").onchange=()=>{S.draws=clampInt($("cfgDraws").value,4,1000,80);};
+  $("cfgLabeled").onchange=()=>{S.labeled=$("cfgLabeled").checked;rebuildParams();renderConfig();};
+  $("cfgBalance").onchange=()=>{S.balance=$("cfgBalance").checked;$("balanceNote").style.display=S.balance?"block":"none";};
+  $("cfgNoDom").onchange=()=>{S.noDom=$("cfgNoDom").checked;};
+  $("cfgNoChoice").onchange=()=>{S.noChoice=$("cfgNoChoice").checked;rebuildParams();renderPriors();};
+  $("cfgBlocks").onchange=()=>{S.blocks=clampInt($("cfgBlocks").value,1,20,1);};
+  document.querySelectorAll("#segMethod button").forEach(b=>b.onclick=()=>{S.method=b.dataset.m;renderConfig();});
+  $("btnSuggestPriors").onclick=suggestPriors;
+  $("btnAddAttr").onclick=()=>{S.attributes.push(blankAttr("Attribute "+(S.attributes.length+1)));rebuildParams();renderAttrs();renderPriors();renderProhib();};
+  $("btnAddProhib").onclick=()=>{if(S.attributes.length<2){alert("Need at least two attributes.");return;}S.prohib.push({attrA:S.attributes[0].id,levelA:0,attrB:S.attributes[1].id,levelB:0});renderProhib();};
+  $("btnGenerate").onclick=generate; $("btnGenerate2").onclick=generate;
+  $("btnStop").onclick=()=>{RUN.cancel=true;};
+  $("btnExample").onclick=()=>{exampleState();renderConfig();$("resultArea").style.display="none";$("emptyState").style.display="flex";};
+  $("btnReset").onclick=()=>{S=defaultState();rebuildParams();renderConfig();$("resultArea").style.display="none";$("emptyState").style.display="flex";};
+  document.querySelectorAll("#tabs button").forEach(b=>b.onclick=()=>{
+    document.querySelectorAll("#tabs button").forEach(x=>x.classList.toggle("on",x===b));
+    document.querySelectorAll(".pane").forEach(p=>p.classList.remove("on"));
+    $("pane-"+b.dataset.p).classList.add("on");
+  });
+}
+
+/* ---------- boot -------------------------------------------------------- */
+exampleState();
+wire();
+renderConfig();
+</script>
+</body>
+</html>

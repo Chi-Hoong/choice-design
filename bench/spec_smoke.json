@@ -1,0 +1,10 @@
+{ "name":"smoke-example", "rows":12, "alts":2, "labeled":false, "method":"efficient",
+  "starts":14, "iter":60, "seed":12345,
+  "alternatives":[{"name":"Option A"},{"name":"Option B"}],
+  "attributes":[
+    {"name":"Price","type":"continuous","levels":[10,15,20,25],"direction":-1},
+    {"name":"Comfort","type":"categorical","coding":"dummy","levels":["Basic","Standard","Premium"],"direction":1},
+    {"name":"Travel time","type":"continuous","levels":[20,30,40],"direction":-1}
+  ],
+  "priors":{"Price":-0.12,"Comfort[Standard]":0.4,"Comfort[Premium]":0.8,"Travel time":-0.05}
+}

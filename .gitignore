@@ -1,0 +1,20 @@
+# R packages compiled locally for benchmarking (225 MB, platform-specific)
+bench/rlib/
+
+# Generated / regenerable benchmark artifacts (rebuild with build_headless.mjs + the spec_*.json)
+bench/cf_headless.mjs
+bench/out_*.json
+bench/*.log
+bench/tmp_*.json
+bench/_*.json
+bench/eval_idefix_*.json
+bench/idefix_*_export.json
+
+# downloaded copyrighted reference PDFs (do not redistribute) + run logs/cache
+bench/*.pdf
+bench/__pycache__/
+bench/err_*.txt
+
+# OS / editor cruft
+.DS_Store
+node_modules/

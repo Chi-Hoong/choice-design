@@ -1,0 +1,7 @@
+{ "name":"P1 categorical/dummy/priors", "rows":12, "alts":2, "method":"efficient", "starts":20,"iter":80,"seed":101,
+  "alternatives":[{"name":"A"},{"name":"B"}],
+  "attributes":[
+    {"name":"X1","coding":"dummy","levels":["a","b","c"]},
+    {"name":"X2","coding":"dummy","levels":["a","b","c"]},
+    {"name":"X3","coding":"dummy","levels":["a","b","c"]}],
+  "priors":{"X1[b]":0.3,"X1[c]":0.6,"X2[b]":-0.4,"X2[c]":-0.8,"X3[b]":0.2,"X3[c]":0.5} }

@@ -1,0 +1,8 @@
+{ "name":"P5 larger 3-alt mixed", "rows":16, "alts":3, "method":"efficient", "starts":16,"iter":80,"seed":105,
+  "alternatives":[{"name":"A"},{"name":"B"},{"name":"C"}],
+  "attributes":[
+    {"name":"Brand","coding":"dummy","levels":["x","y"]},
+    {"name":"Size","coding":"dummy","levels":["s","m","l"]},
+    {"name":"Price","type":"continuous","levels":[1,2,3,4],"direction":-1},
+    {"name":"Color","coding":"effects","levels":["r","g","b"]}],
+  "priors":{"Brand[y]":0.4,"Size[m]":0.3,"Size[l]":0.6,"Price":-0.5,"Color[g]":0.1,"Color[b]":0.2} }
