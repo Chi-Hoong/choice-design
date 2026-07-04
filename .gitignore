@@ -18,3 +18,8 @@ bench/err_*.txt
 # OS / editor cruft
 .DS_Store
 node_modules/
+
+# generated doc PDFs (regenerate with docs/build-pdf.sh)
+docs/*.pdf
+docs/*.html
+docs/pandoc_*.err
