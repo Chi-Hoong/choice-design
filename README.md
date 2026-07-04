@@ -6,6 +6,12 @@ ChoiceForge builds D-efficient and Bayesian-efficient stated-choice designs by m
 D-error of the multinomial-logit (MNL) Fisher information matrix. It is a single self-contained
 `index.html` — no build step, no server-side code, no dependencies.
 
+**▶ Use it online: https://chi-hoong.github.io/choice-design/**
+
+> **Companion tool — [ChoiceForge Estimator](https://github.com/Chi-Hoong/choice-estimator)**
+> ([use online](https://chi-hoong.github.io/choice-estimator/)) estimates the models (conditional logit,
+> mixed logit, latent class) from the data you collect. The two compose: **design → collect → estimate**.
+
 ## Run it
 
 Open `index.html` in any modern browser, or serve the folder:
