@@ -33,6 +33,13 @@ python3 -m http.server 8011    # then visit http://localhost:8011
 - **Exports:** wide CSV (review), long coded CSV (ready for Apollo / Biogeme / R `mlogit`), and an
   illustrative Ngene-style syntax block.
 
+## Documentation
+
+- **[User Guide](docs/USER_GUIDE.md)** — step‑by‑step: build a design, read the results, export, worked
+  examples, troubleshooting, glossary.
+- **[Technical Documentation](docs/TECHNICAL.md)** — the full theory (MNL, Fisher information, D‑error),
+  coding, the optimisation algorithms, constraints, blocking, numerical methods, and the benchmark.
+
 ## The maths
 
 MNL Fisher information, single respondent:
